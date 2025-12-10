@@ -310,19 +310,24 @@ h1 {
 .gantt-y-axis {
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
-    min-width: 60px;
-    padding-right: 10px;
+    gap: 5px;
+    min-width: 140px;
+    padding-right: 18px;
+    flex: 0 0 auto;
+    overflow: visible;
 }
 
 .gantt-y-label {
     height: 40px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     font-weight: bold;
     color: var(--orange-dark);
     font-size: 1.1rem;
+    padding-right: 12px;
+    white-space: nowrap;
+    overflow: visible;
 }
 
 .gantt-chart-wrapper {
@@ -371,6 +376,62 @@ h1 {
 .process-d { background: #ffb866; }
 .process-e { background: #ffc97f; }
 .process-f { background: #ffd699; }
+
+/* Estilos para estados de procesos */
+.gantt-blocked {
+    background: repeating-linear-gradient(
+        45deg,
+        #f44336,
+        #f44336 5px,
+        #ff6b6b 5px,
+        #ff6b6b 10px
+    ) !important;
+    color: white !important;
+    font-weight: bold !important;
+    opacity: 0.9;
+}
+
+.gantt-waiting {
+    background: #e0e0e0 !important;
+    border: 1px dashed #999 !important;
+    color: #666 !important;
+    font-size: 10px !important;
+    opacity: 0.8;
+}
+
+.gantt-dispatcher {
+    background: #2196F3 !important;
+    color: white !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    opacity: 0.85;
+    border: 1px solid #1976D2 !important;
+}
+
+.gantt-dispatcher-quantum {
+    background: transparent !important;
+    border-left: 2px solid var(--orange-primary) !important;
+    border-right: 2px solid var(--orange-primary) !important;
+    opacity: 1 !important;
+}
+
+.gantt-context-switch {
+    background: #9c27b0 !important;
+    color: white !important;
+    font-size: 9px !important;
+    font-weight: bold !important;
+    opacity: 0.9;
+    border: 1px solid #7b1fa2 !important;
+}
+
+.dispatcher-marker {
+    position: absolute;
+    width: 3px;
+    height: 100%;
+    background: #2196F3;
+    z-index: 10;
+    cursor: pointer;
+}
 
 .gantt-x-axis {
     display: flex;

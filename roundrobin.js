@@ -52,7 +52,6 @@ function removeProcess(button) {
 
 // Función de simulación Round Robin
 function simulate() {
-    // Recolectar datos de entrada
     const rows = processTableBody.querySelectorAll('tr');
     processes.length = 0;
     
@@ -72,213 +71,357 @@ function simulate() {
         });
     });
     
-    const quantum = parseInt(quantumInput.value) || 2;
-    
-    // Ejecutar algoritmo Round Robin
+    const quantum = parseInt(quantumInput.value) || 3;
     const result = runRR(processes, quantum);
     
-    // Mostrar resultados
-    renderGanttChart(result.schedule);
+    console.log('Resultado de simulación RR:', result);
+    
+    renderGanttChart(result.processStates, result.dispatcherSegments);
     renderMetricsTable(result.metrics);
 }
 
-// Implementación del algoritmo Round Robin con bloqueos
+/**
+ * Algoritmo Round Robin - Implementación estricta
+ * 
+ * Reglas:
+ * 1. Cola FIFO de procesos listos
+ * 2. Dispatcher (1 unidad) antes de cada ejecución
+ * 3. Proceso ejecuta por quantum o hasta bloquearse/terminar
+ * 4. Bloqueo ocurre cuando cpuTimeExecuted alcanza exactamente blockStart
+ * 5. Proceso bloqueado va a cola de bloqueados
+ * 6. Proceso con quantum expirado regresa al final de la cola de listos
+ */
 function runRR(processes, quantum) {
-    const schedule = [];
+    const DISPATCHER_TIME = 1;
+    const MAX_TIME = 1000;
     const n = processes.length;
-    const remaining = processes.map(p => ({
-        ...p,
-        remainingTime: p.burst,
-        startTime: -1,
-        completionTime: 0,
-        executedTime: 0,
-        blocked: false,
-        blockEndTime: 0,
-        hasBlocked: false
+    
+    // Inicializar estados
+    const processStates = processes.map(p => ({
+        name: p.name,
+        arrival: p.arrival,
+        burst: p.burst,
+        blockStart: p.blockStart,
+        blockDuration: p.blockDuration,
+        remainingBurst: p.burst,
+        cpuTimeExecuted: 0,
+        startTime: null,
+        finishTime: null,
+        segments: [],
+        waitingStart: null,
+        isBlocked: false,
+        blockedUntil: null,
+        isCompleted: false,
+        hasBlocked: false,
+        inReadyQueue: false,
+        readyTime: null
     }));
     
     let currentTime = 0;
+    let completed = 0;
     const readyQueue = [];
     const blockedQueue = [];
-    let completed = 0;
-    const maxTime = Math.max(...processes.map(p => p.arrival)) + processes.reduce((sum, p) => sum + p.burst + p.blockDuration, 0) + n * quantum;
-    
-    // Agregar procesos que llegan en tiempo 0
-    remaining.forEach((p, index) => {
-        if (p.arrival === 0) {
-            readyQueue.push(index);
+    const dispatcherSegments = [];
+
+    // Inserta manteniendo el orden por instante en que el proceso quedó listo
+    function enqueueReady(proc, readyTime) {
+        proc.inReadyQueue = true;
+        proc.readyTime = readyTime;
+        if (proc.waitingStart === null) {
+            proc.waitingStart = readyTime;
         }
-    });
+
+        let inserted = false;
+        for (let i = 0; i < readyQueue.length; i++) {
+            if (readyQueue[i].readyTime > readyTime) {
+                readyQueue.splice(i, 0, proc);
+                inserted = true;
+                break;
+            }
+        }
+
+        if (!inserted) {
+            readyQueue.push(proc);
+        }
+    }
     
-    while (completed < n && currentTime < maxTime) {
-        // Verificar procesos bloqueados que pueden volver
+    // Agregar procesos que llegaron
+    function checkArrivals() {
+        for (const p of processStates) {
+            if (p.arrival <= currentTime && !p.inReadyQueue && !p.isCompleted && !p.isBlocked) {
+                enqueueReady(p, p.arrival);
+            }
+        }
+    }
+    
+    // Desbloquear procesos
+    function checkUnblocked() {
         for (let i = blockedQueue.length - 1; i >= 0; i--) {
-            if (currentTime >= blockedQueue[i].blockEndTime) {
-                const unblockedIdx = blockedQueue.splice(i, 1)[0].index;
-                remaining[unblockedIdx].blocked = false;
-                if (!readyQueue.includes(unblockedIdx)) {
-                    readyQueue.push(unblockedIdx);
-                }
+            const p = blockedQueue[i];
+            if (p.blockedUntil <= currentTime) {
+                p.isBlocked = false;
+                const unblockTime = p.blockedUntil;
+                p.blockedUntil = null;
+                blockedQueue.splice(i, 1);
+                
+                enqueueReady(p, unblockTime);
             }
         }
-        
-        if (readyQueue.length === 0) {
-            // Avanzar al siguiente tiempo de llegada o desbloqueo
-            const nextEvents = [];
-            remaining.forEach((p, idx) => {
-                if (p.arrival > currentTime && p.remainingTime > 0 && !readyQueue.includes(idx) && !p.blocked) {
-                    nextEvents.push(p.arrival);
-                }
-            });
-            if (blockedQueue.length > 0) {
-                nextEvents.push(Math.min(...blockedQueue.map(p => p.blockEndTime)));
+    }
+    
+    // Obtener próximo evento
+    function getNextEventTime() {
+        const events = [];
+        for (const p of processStates) {
+            if (p.arrival > currentTime && !p.isCompleted && !p.isBlocked) {
+                events.push(p.arrival);
             }
-            
-            if (nextEvents.length === 0) break;
-            
-            currentTime = Math.min(...nextEvents);
-            
-            // Agregar procesos que llegaron
-            remaining.forEach((p, index) => {
-                if (p.arrival <= currentTime && p.remainingTime > 0 && !readyQueue.includes(index) && !p.blocked) {
-                    readyQueue.push(index);
-                }
-            });
+        }
+        for (const p of blockedQueue) {
+            events.push(p.blockedUntil);
+        }
+        return events.length > 0 ? Math.min(...events) : null;
+    }
+    
+    // Bucle principal
+    while (completed < n && currentTime < MAX_TIME) {
+        // Procesar llegadas y desbloqueos
+        checkArrivals();
+        checkUnblocked();
+        
+        // Si no hay procesos listos, avanzar
+        if (readyQueue.length === 0) {
+            const nextEvent = getNextEventTime();
+            if (nextEvent === null) break;
+            currentTime = nextEvent;
             continue;
         }
         
-        // Tomar el primer proceso de la cola
-        const processIndex = readyQueue.shift();
-        const process = remaining[processIndex];
+        // DISPATCHER
+        dispatcherSegments.push({
+            start: currentTime,
+            end: currentTime + DISPATCHER_TIME
+        });
+        currentTime += DISPATCHER_TIME;
         
-        // Registrar el primer tiempo de ejecución
-        if (process.startTime === -1) {
-            process.startTime = currentTime;
+        // Revisar eventos durante dispatcher
+        checkArrivals();
+        checkUnblocked();
+        
+        // Tomar proceso (FIFO)
+        const proc = readyQueue.shift();
+        proc.inReadyQueue = false;
+        
+        // Cerrar segmento de espera
+        if (proc.waitingStart !== null && proc.waitingStart < currentTime) {
+            proc.segments.push({
+                type: 'waiting',
+                start: proc.waitingStart,
+                end: currentTime
+            });
+            proc.waitingStart = null;
         }
         
-        // Verificar si tiene bloqueo pendiente
-        const hasBlockPending = process.blockDuration > 0 && 
-                               !process.hasBlocked &&
-                               process.executedTime < process.blockStart;
+        // Tiempo de respuesta
+        if (proc.startTime === null) {
+            proc.startTime = currentTime;
+        }
         
         // Calcular tiempo de ejecución
-        let executeTime = Math.min(quantum, process.remainingTime);
-        if (hasBlockPending) {
-            const timeUntilBlock = process.blockStart - process.executedTime;
-            executeTime = Math.min(executeTime, timeUntilBlock);
-        }
-        
-        const startTime = currentTime;
-        const endTime = currentTime + executeTime;
-        
-        // Agregar al schedule
-        schedule.push({
-            process: process.name,
-            start: startTime,
-            end: endTime
-        });
-        
-        process.remainingTime -= executeTime;
-        process.executedTime += executeTime;
-        currentTime = endTime;
-        
-        // Agregar procesos que llegaron durante la ejecución
-        const newArrivals = [];
-        remaining.forEach((p, index) => {
-            if (p.arrival > startTime && p.arrival <= currentTime && 
-                p.remainingTime > 0 && !readyQueue.includes(index) && 
-                index !== processIndex && !p.blocked) {
-                newArrivals.push(index);
+        let execTime = Math.min(quantum, proc.remainingBurst);
+        let willBlock = false;
+
+        // Bloqueo sólo si ocurre dentro de este turno (no acumulativo entre cuantums)
+        if (proc.blockDuration > 0 && !proc.hasBlocked && proc.blockStart > 0) {
+            if (proc.blockStart <= execTime) {
+                execTime = proc.blockStart;
+                willBlock = true;
             }
-        });
-        
-        // Verificar si se bloqueó
-        if (hasBlockPending && process.executedTime === process.blockStart) {
-            process.blocked = true;
-            process.hasBlocked = true;
-            process.blockEndTime = currentTime + process.blockDuration;
-            blockedQueue.push({ index: processIndex, blockEndTime: process.blockEndTime });
-        } else if (process.remainingTime === 0) {
-            // Si el proceso se completó
-            process.completionTime = currentTime;
-            completed++;
-        } else {
-            // Si no se completó y no se bloqueó, regresa a la cola
-            newArrivals.push(processIndex);
         }
         
-        readyQueue.push(...newArrivals);
+        // Ejecutar
+        const execStart = currentTime;
+        const execEnd = currentTime + execTime;
+        
+        proc.segments.push({
+            type: 'executing',
+            start: execStart,
+            end: execEnd
+        });
+        
+        proc.remainingBurst -= execTime;
+        proc.cpuTimeExecuted += execTime;
+        currentTime = execEnd;
+        
+        // Determinar siguiente estado
+        if (willBlock) {
+            // Bloquear
+            proc.isBlocked = true;
+            proc.hasBlocked = true;
+            proc.blockedUntil = currentTime + proc.blockDuration;
+            blockedQueue.push(proc);
+            
+            proc.segments.push({
+                type: 'blocked',
+                start: currentTime,
+                end: proc.blockedUntil
+            });
+            
+        } else if (proc.remainingBurst <= 0) {
+            // Terminó
+            proc.isCompleted = true;
+            proc.finishTime = currentTime;
+            completed++;
+            
+        } else {
+            // Quantum expirado
+            enqueueReady(proc, currentTime);
+        }
+    }
+
+    // Dispatcher final para representar el retorno a inactivo (alineado con ejemplos)
+    if (dispatcherSegments.length > 0) {
+        dispatcherSegments.push({
+            start: currentTime,
+            end: currentTime + DISPATCHER_TIME
+        });
     }
     
     // Calcular métricas
-    const metrics = remaining.map(p => {
-        const turnaroundTime = p.completionTime - p.arrival;
-        const waitingTime = turnaroundTime - p.burst - (p.blockDuration || 0);
+    const metrics = processStates.map(p => {
+        const waitingTime = p.segments
+            .filter(seg => seg.type === 'waiting')
+            .reduce((sum, seg) => sum + (seg.end - seg.start), 0);
+        
+        const turnaroundTime = p.finishTime - p.arrival;
         const responseTime = p.startTime - p.arrival;
-        const penalty = turnaroundTime / p.burst;
+        const penalty = p.burst > 0 ? turnaroundTime / p.burst : 0;
+        const lostTime = turnaroundTime - p.burst;
         
         return {
             process: p.name,
             arrival: p.arrival,
             burst: p.burst,
-            completion: p.completionTime,
+            completion: p.finishTime,
             turnaround: turnaroundTime,
             waiting: waitingTime,
             response: responseTime,
-            penalty: penalty
+            penalty: penalty,
+            lostTime: lostTime
         };
     });
     
-    return { schedule, metrics };
+    console.log('Tiempos de finalización:', processStates.map(p => `${p.name}=${p.finishTime}`).join(', '));
+    console.log('Dispatcher:', dispatcherSegments.map(s => `{${s.start}-${s.end}}`).join(', '));
+    
+    return { processStates, metrics, dispatcherSegments };
 }
 
 // Renderizar diagrama de Gantt
-function renderGanttChart(schedule) {
+function renderGanttChart(processStates, dispatcherSegments = []) {
     const ganttChart = document.getElementById('ganttChart');
     const ganttYAxis = document.getElementById('ganttYAxis');
     const ganttXAxis = document.getElementById('ganttXAxis');
     
-    // Limpiar contenido previo
     ganttChart.innerHTML = '';
     ganttYAxis.innerHTML = '';
     ganttXAxis.innerHTML = '';
     
-    // Obtener procesos únicos y tiempo máximo
-    const uniqueProcesses = [...new Set(schedule.map(s => s.process))];
-    const maxTime = Math.max(...schedule.map(s => s.end));
+    if (!processStates || processStates.length === 0) {
+        ganttChart.innerHTML = '<p>No hay datos para mostrar</p>';
+        return;
+    }
+    
+    const processMax = Math.max(...processStates.map(p => 
+        p.segments.length > 0 ? Math.max(...p.segments.map(s => s.end)) : 0
+    ));
+    const dispatcherMax = dispatcherSegments.length > 0
+        ? Math.max(...dispatcherSegments.map(s => s.end))
+        : 0;
+    const maxTime = Math.max(processMax, dispatcherMax);
     const pixelsPerUnit = 30;
     
-    // Crear etiquetas del eje Y
-    uniqueProcesses.forEach(processName => {
+    // Etiquetas eje Y
+    for (let i = processStates.length - 1; i >= 0; i--) {
         const label = document.createElement('div');
         label.className = 'gantt-y-label';
-        label.textContent = processName;
+        label.textContent = processStates[i].name;
         ganttYAxis.appendChild(label);
-    });
+    }
     
-    // Crear filas del diagrama de Gantt
-    uniqueProcesses.forEach(processName => {
+    const dispatcherLabel = document.createElement('div');
+    dispatcherLabel.className = 'gantt-y-label';
+    dispatcherLabel.textContent = 'Dispatcher';
+    dispatcherLabel.style.fontStyle = 'italic';
+    dispatcherLabel.style.color = '#666';
+    ganttYAxis.appendChild(dispatcherLabel);
+    
+    // Filas de procesos
+    for (let i = processStates.length - 1; i >= 0; i--) {
+        const pState = processStates[i];
         const row = document.createElement('div');
         row.className = 'gantt-row';
         row.style.width = `${maxTime * pixelsPerUnit}px`;
         
-        // Agregar barras para este proceso
-        schedule
-            .filter(s => s.process === processName)
-            .forEach(segment => {
-                const bar = document.createElement('div');
-                bar.className = `gantt-bar process-${processName.toLowerCase()}`;
-                bar.style.left = `${segment.start * pixelsPerUnit}px`;
-                bar.style.width = `${(segment.end - segment.start) * pixelsPerUnit}px`;
-                bar.textContent = processName;
-                bar.title = `${processName}: ${segment.start}-${segment.end}`;
-                row.appendChild(bar);
-            });
+        pState.segments.forEach(seg => {
+            const bar = document.createElement('div');
+            const duration = seg.end - seg.start;
+            
+            if (seg.type === 'executing') {
+                bar.className = `gantt-bar process-${pState.name.toLowerCase()}`;
+                bar.textContent = pState.name;
+            } else if (seg.type === 'blocked') {
+                bar.className = `gantt-bar gantt-blocked`;
+                bar.textContent = 'I/O';
+                bar.style.opacity = '0.8';
+                bar.style.background = 'repeating-linear-gradient(45deg, #f44336, #f44336 5px, #ff6b6b 5px, #ff6b6b 10px)';
+                bar.style.color = 'white';
+                bar.style.fontWeight = 'bold';
+            } else if (seg.type === 'waiting') {
+                bar.className = `gantt-bar gantt-waiting`;
+                bar.textContent = 'Espera';
+                bar.style.opacity = '0.7';
+                bar.style.background = '#e0e0e0';
+                bar.style.border = '1px dashed #999';
+                bar.style.color = '#666';
+                bar.style.fontSize = '10px';
+            }
+            
+            bar.style.left = `${seg.start * pixelsPerUnit}px`;
+            bar.style.width = `${duration * pixelsPerUnit}px`;
+            bar.title = `${pState.name} - ${seg.type}: ${seg.start}-${seg.end}`;
+            row.appendChild(bar);
+        });
         
         ganttChart.appendChild(row);
+    }
+    
+    // Fila dispatcher
+    const dispatcherRow = document.createElement('div');
+    dispatcherRow.className = 'gantt-row';
+    dispatcherRow.style.width = `${maxTime * pixelsPerUnit}px`;
+    dispatcherRow.style.background = '#f9f9f9';
+    dispatcherRow.style.position = 'relative';
+    
+    dispatcherSegments.forEach(seg => {
+        const bar = document.createElement('div');
+        bar.className = 'gantt-bar gantt-dispatcher';
+        bar.style.position = 'absolute';
+        bar.style.left = `${seg.start * pixelsPerUnit}px`;
+        bar.style.width = `${(seg.end - seg.start) * pixelsPerUnit}px`;
+        bar.style.height = '100%';
+        bar.style.display = 'flex';
+        bar.style.alignItems = 'center';
+        bar.style.justifyContent = 'center';
+        bar.style.fontSize = '13px';
+        bar.textContent = 'D';
+        bar.title = `Dispatcher: ${seg.start}-${seg.end}`;
+        dispatcherRow.appendChild(bar);
     });
     
-    // Crear etiquetas del eje X
+    ganttChart.appendChild(dispatcherRow);
+    
+    // Eje X
     ganttXAxis.style.width = `${maxTime * pixelsPerUnit}px`;
     for (let i = 0; i <= maxTime; i++) {
         const label = document.createElement('div');
@@ -301,15 +444,14 @@ function renderMetricsTable(metrics) {
     let totalLostTime = 0;
     
     metrics.forEach(metric => {
-        const lostTime = metric.turnaround - metric.burst;
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${metric.process}</td>
             <td>${metric.burst}</td>
-            <td>${metric.waiting}</td>
+            <td>${metric.waiting.toFixed(2)}</td>
             <td>${metric.completion}</td>
             <td>${metric.turnaround}</td>
-            <td>${lostTime}</td>
+            <td>${metric.lostTime}</td>
             <td>${metric.penalty.toFixed(2)}</td>
             <td>${metric.response}</td>
         `;
@@ -319,10 +461,9 @@ function renderMetricsTable(metrics) {
         totalWaiting += metric.waiting;
         totalResponse += metric.response;
         totalPenalty += metric.penalty;
-        totalLostTime += lostTime;
+        totalLostTime += metric.lostTime;
     });
     
-    // Calcular promedios
     const count = metrics.length;
     document.getElementById('avgWaiting').textContent = (totalWaiting / count).toFixed(2);
     document.getElementById('avgTurnaround').textContent = (totalTurnaround / count).toFixed(2);
