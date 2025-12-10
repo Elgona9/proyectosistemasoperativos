@@ -111,6 +111,52 @@ h1 {
     text-align: left;
 }
 
+/* Panel de información */
+.info-panel {
+    background: linear-gradient(135deg, #fff9f0 0%, #ffe8cc 100%);
+    border-radius: 15px;
+    padding: 25px 30px;
+    margin-bottom: 30px;
+    border: 2px solid var(--orange-light);
+    box-shadow: 0 4px 6px rgba(255, 140, 0, 0.15);
+}
+
+.info-panel h3 {
+    color: var(--orange-dark);
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.info-panel ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.info-panel li {
+    padding: 8px 0;
+    color: var(--gray-dark);
+    line-height: 1.6;
+    position: relative;
+    padding-left: 25px;
+}
+
+.info-panel li:before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--orange-primary);
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.info-panel strong {
+    color: var(--orange-dark);
+    font-weight: 600;
+}
+
 /* Panel de entrada */
 .input-panel {
     background: var(--white);

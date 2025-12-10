@@ -13,6 +13,20 @@
             <h1>SJF - Shortest Job First</h1>
         </div>
 
+        <!-- Información del algoritmo -->
+        <div class="info-panel">
+            <h3>📋 Características del Algoritmo SJF</h3>
+            <ul>
+                <li><strong>Criterio de Selección:</strong> Cuando la CPU está libre, se selecciona el proceso con el <strong>tiempo de ráfaga (t) más corto</strong> de entre los procesos que han llegado y están en la cola de listos.</li>
+                <li><strong>No Expulsivo:</strong> Una vez que un proceso comienza su ráfaga de CPU, la ejecuta completamente hasta terminar o hasta bloquearse por E/S. No puede ser interrumpido por procesos recién llegados con ráfagas más cortas.</li>
+                <li><strong>Desempate (FIFO):</strong> Si dos o más procesos tienen la misma duración de ráfaga, se selecciona el que llegó primero (menor tiempo de llegada).</li>
+                <li><strong>Ventaja:</strong> Minimiza el tiempo de finalización promedio en comparación con FCFS.</li>
+                <li><strong>Desventaja:</strong> Puede causar <strong>inanición</strong> - si llegan continuamente trabajos cortos, los trabajos largos pueden nunca ejecutarse.</li>
+                <li><strong>Requisito:</strong> Es necesario conocer de antemano la duración de cada trabajo (tiempo de ráfaga).</li>
+                <li><strong>Óptimo cuando:</strong> Se tienen simultáneamente todas las ráfagas disponibles desde el inicio.</li>
+            </ul>
+        </div>
+
         <!-- Panel de entrada de procesos -->
         <div class="input-panel">
             <h2>Configuración de Procesos</h2>
