@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRTF - Shortest Remaining Time First</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="btn-back">← Volver</a>
+            <h1>SRTF - Shortest Remaining Time First</h1>
+        </div>
+
+        <!-- Panel de entrada de procesos -->
+        <div class="input-panel">
+            <h2>Configuración de Procesos</h2>
+            <div class="process-inputs">
+                <table id="processTable">
+                    <thead>
+                        <tr>
+                            <th>Proceso</th>
+                            <th>li (Llegada)</th>
+                            <th>t (Ejecución)</th>
+                            <th>Bloqueo inicio</th>
+                            <th>Bloqueo duración</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="processTableBody">
+                        <tr data-process="A">
+                            <td>A</td>
+                            <td><input type="number" class="arrival-time" min="0" value="0"></td>
+                            <td><input type="number" class="burst-time" min="1" value="6"></td>
+                            <td><input type="number" class="block-start" min="0" value="3"></td>
+                            <td><input type="number" class="block-duration" min="0" value="2"></td>
+                            <td><button class="btn-remove" onclick="removeProcess(this)">✕</button></td>
+                        </tr>
+                        <tr data-process="B">
+                            <td>B</td>
+                            <td><input type="number" class="arrival-time" min="0" value="1"></td>
+                            <td><input type="number" class="burst-time" min="1" value="8"></td>
+                            <td><input type="number" class="block-start" min="0" value="1"></td>
+                            <td><input type="number" class="block-duration" min="0" value="3"></td>
+                            <td><button class="btn-remove" onclick="removeProcess(this)">✕</button></td>
+                        </tr>
+                        <tr data-process="C">
+                            <td>C</td>
+                            <td><input type="number" class="arrival-time" min="0" value="2"></td>
+                            <td><input type="number" class="burst-time" min="1" value="7"></td>
+                            <td><input type="number" class="block-start" min="0" value="5"></td>
+                            <td><input type="number" class="block-duration" min="0" value="1"></td>
+                            <td><button class="btn-remove" onclick="removeProcess(this)">✕</button></td>
+                        </tr>
+                        <tr data-process="D">
+                            <td>D</td>
+                            <td><input type="number" class="arrival-time" min="0" value="4"></td>
+                            <td><input type="number" class="burst-time" min="1" value="3"></td>
+                            <td><input type="number" class="block-start" min="0" value="0"></td>
+                            <td><input type="number" class="block-duration" min="0" value="0"></td>
+                            <td><button class="btn-remove" onclick="removeProcess(this)">✕</button></td>
+                        </tr>
+                        <tr data-process="E">
+                            <td>E</td>
+                            <td><input type="number" class="arrival-time" min="0" value="6"></td>
+                            <td><input type="number" class="burst-time" min="1" value="9"></td>
+                            <td><input type="number" class="block-start" min="0" value="2"></td>
+                            <td><input type="number" class="block-duration" min="0" value="4"></td>
+                            <td><button class="btn-remove" onclick="removeProcess(this)">✕</button></td>
+                        </tr>
+                        <tr data-process="F">
+                            <td>F</td>
+                            <td><input type="number" class="arrival-time" min="0" value="6"></td>
+                            <td><input type="number" class="burst-time" min="1" value="2"></td>
+                            <td><input type="number" class="block-start" min="0" value="0"></td>
+                            <td><input type="number" class="block-duration" min="0" value="0"></td>
+                            <td><button class="btn-remove" onclick="removeProcess(this)">✕</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button id="addProcessBtn" class="btn-add">+ Agregar Proceso</button>
+            </div>
+            <button id="simulateBtn" class="btn-simulate">Simular</button>
+        </div>
+
+        <!-- Gráfica de Planificación -->
+        <div class="gantt-panel">
+            <h2>Gráfica de Planificación</h2>
+            <div class="gantt-container">
+                <div class="gantt-y-axis" id="ganttYAxis">
+                    <!-- Etiquetas de procesos -->
+                </div>
+                <div class="gantt-chart-wrapper">
+                    <div class="gantt-chart" id="ganttChart">
+                        <!-- Barras del diagrama de Gantt -->
+                    </div>
+                    <div class="gantt-x-axis" id="ganttXAxis">
+                        <!-- Etiquetas de tiempo -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de métricas -->
+        <div class="metrics-panel">
+            <table class="metrics-table">
+                <thead>
+                    <tr>
+                        <th>Proceso</th>
+                        <th>t (Ejecución)</th>
+                        <th>Espera</th>
+                        <th>if (Instante Fin)</th>
+                        <th>T (Retorno)</th>
+                        <th>Tiempo perdido</th>
+                        <th>ip (Penalidad)</th>
+                        <th>tr (Respuesta)</th>
+                    </tr>
+                </thead>
+                <tbody id="metricsTableBody">
+                    <!-- Métricas calculadas -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td><strong>Promedios:</strong></td>
+                        <td>-</td>
+                        <td id="avgWaiting">-</td>
+                        <td>-</td>
+                        <td id="avgTurnaround">-</td>
+                        <td id="avgLostTime">-</td>
+                        <td id="avgPenalty">-</td>
+                        <td id="avgResponse">-</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <script src="srtf.js"></script>
+</body>
+</html>
