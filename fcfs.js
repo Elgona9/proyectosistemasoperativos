@@ -6,9 +6,6 @@ const addProcessBtn = document.getElementById('addProcessBtn');
 const simulateBtn = document.getElementById('simulateBtn');
 const processTableBody = document.getElementById('processTableBody');
 
-// Contador global inicializado con los procesos existentes
-let processCounter = processTableBody.querySelectorAll('tr').length;
-
 // Event listeners
 addProcessBtn.addEventListener('click', () => {
     addProcess();
@@ -21,14 +18,14 @@ simulateBtn.addEventListener('click', () => {
 // Funciones de gestión de procesos
 function addProcess() {
     const processNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+    const currentProcesses = processTableBody.querySelectorAll('tr').length;
     
-    if (processCounter >= processNames.length) {
+    if (currentProcesses >= processNames.length) {
         alert('Número máximo de procesos alcanzado');
         return;
     }
     
-    const processName = processNames[processCounter];
-    processCounter++;
+    const processName = processNames[currentProcesses];
     const row = document.createElement('tr');
     row.dataset.process = processName;
     row.innerHTML = `
@@ -136,15 +133,13 @@ function runFCFSEngine(processes, context_switch = 0, max_time = 10000) {
         for (let i = blockedQueue.length - 1; i >= 0; i--) {
             const pState = blockedQueue[i];
             if (currentTime >= pState.blockedUntil) {
+                const unblockTime = pState.blockedUntil; // Guardar el tiempo exacto de desbloqueo
                 pState.isBlocked = false;
                 pState.blockedUntil = null;
                 blockedQueue.splice(i, 1);
                 
-                // Cerrar segmento de bloqueo
-                const lastSeg = pState.segments[pState.segments.length - 1];
-                if (lastSeg && lastSeg.type === 'blocked') {
-                    lastSeg.end = currentTime;
-                }
+                // El segmento de bloqueo ya tiene el end correcto (establecido al crear el segmento)
+                // NO modificar lastSeg.end
                 
                 // Insertar en cola según orden FCFS (arrival time)
                 // Los procesos que llegaron primero van primero
@@ -155,7 +150,8 @@ function runFCFSEngine(processes, context_switch = 0, max_time = 10000) {
                     readyQueue.splice(insertIndex, 0, pState);
                 }
                 
-                pState.waitingStart = currentTime;
+                // Iniciar espera desde el momento exacto que terminó el bloqueo
+                pState.waitingStart = unblockTime;
                 logs.push({ time: currentTime, event: 'Process unblocked', pid: pState.pid });
             }
         }
