@@ -13,6 +13,21 @@
             <h1>SRTF - Shortest Remaining Time First</h1>
         </div>
 
+        <!-- Información del algoritmo -->
+        <div class="info-panel">
+            <h3>📋 Características del Algoritmo SRTF</h3>
+            <ul>
+                <li><strong>Criterio de Selección:</strong> En cada momento, se ejecuta el proceso que tiene el <strong>tiempo de ráfaga restante más corto</strong>. La selección se reevalúa cada vez que llega un nuevo proceso o uno regresa de un bloqueo.</li>
+                <li><strong>Expulsivo (Preemptive):</strong> Si un proceso llega (o regresa de bloqueo) con un tiempo restante menor que el del proceso en ejecución, el proceso actual es <strong>interrumpido</strong> y devuelto a la cola de listos. El nuevo proceso con menor tiempo restante toma la CPU.</li>
+                <li><strong>Desempate (FIFO):</strong> Si dos o más procesos tienen el mismo tiempo restante más corto, se selecciona el que llegó primero (menor tiempo de llegada).</li>
+                <li><strong>Bloqueo por E/S:</strong> Cuando un proceso alcanza su punto de bloqueo (después de ejecutar la cantidad especificada en "Bloqueo inicio"), se bloquea durante la "Bloqueo duración". Al terminar, vuelve a la cola de listos para reevaluación.</li>
+                <li><strong>Ventaja:</strong> Proporciona el <strong>menor tiempo de espera promedio</strong> teóricamente posible. Ideal para sistemas donde los trabajos cortos tienen prioridad.</li>
+                <li><strong>Desventaja:</strong> Puede causar <strong>inanición severa</strong> - los procesos largos pueden no ejecutarse nunca si continuamente llegan procesos más cortos. Mayor sobrecarga por cambios de contexto frecuentes.</li>
+                <li><strong>Requisito:</strong> Es necesario conocer o estimar el tiempo de ejecución restante de cada proceso.</li>
+                <li><strong>Uso ideal:</strong> Sistemas interactivos donde la respuesta rápida a trabajos cortos es crítica.</li>
+            </ul>
+        </div>
+
         <!-- Panel de entrada de procesos -->
         <div class="input-panel">
             <h2>Configuración de Procesos</h2>

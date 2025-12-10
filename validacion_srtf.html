@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Validación SRTF</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .step { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        .highlight { background: yellow; }
+        .process { display: inline-block; padding: 2px 8px; margin: 2px; border: 1px solid #333; }
+        .executing { background: lightgreen; font-weight: bold; }
+        .waiting { background: lightgray; }
+        .blocked { background: lightcoral; }
+    </style>
+</head>
+<body>
+    <h1>Validación SRTF - Paso a Paso</h1>
+    <div id="output"></div>
+    
+    <script>
+        // Datos de prueba del HTML
+        const processes = [
+            { pid: 'A', arrival: 0, burst: 6, blocks: [{ start: 3, duration: 2 }] },
+            { pid: 'B', arrival: 1, burst: 8, blocks: [{ start: 1, duration: 3 }] },
+            { pid: 'C', arrival: 2, burst: 7, blocks: [{ start: 5, duration: 1 }] },
+            { pid: 'D', arrival: 4, burst: 3, blocks: [] },
+            { pid: 'E', arrival: 6, burst: 9, blocks: [{ start: 2, duration: 4 }] },
+            { pid: 'F', arrival: 6, burst: 2, blocks: [] }
+        ];
+        
+        // Estado de procesos
+        const states = processes.map(p => ({
+            ...p,
+            remainingBurst: p.burst,
+            executedTime: 0,
+            arrived: false,
+            isBlocked: false,
+            blockEndTime: null,
+            completed: false,
+            hasBlocked: false
+        }));
+        
+        let output = '<h2>Simulación SRTF esperada:</h2>';
+        let time = 0;
+        let readyQueue = [];
+        let blockedQueue = [];
+        let currentProcess = null;
+        let schedule = [];
+        
+        // Simular hasta tiempo 40
+        while (time <= 40 && states.some(p => !p.completed)) {
+            output += `<div class="step"><strong>t=${time}</strong><br>`;
+            
+            // 1. Desbloquear procesos
+            for (let i = blockedQueue.length - 1; i >= 0; i--) {
+                if (blockedQueue[i].blockEndTime === time) {
+                    const p = blockedQueue.splice(i, 1)[0];
+                    p.isBlocked = false;
+                    readyQueue.push(p);
+                    output += `&nbsp;&nbsp;🔓 ${p.pid} desbloqueado (remaining=${p.remainingBurst})<br>`;
+                }
+            }
+            
+            // 2. Procesar llegadas
+            states.forEach(p => {
+                if (!p.arrived && p.arrival === time) {
+                    p.arrived = true;
+                    readyQueue.push(p);
+                    output += `&nbsp;&nbsp;📥 ${p.pid} llega (burst=${p.burst})<br>`;
+                }
+            });
+            
+            // 3. Verificar expropiación
+            if (currentProcess && readyQueue.length > 0) {
+                readyQueue.sort((a, b) => {
+                    if (a.remainingBurst !== b.remainingBurst) return a.remainingBurst - b.remainingBurst;
+                    return a.arrival - b.arrival;
+                });
+                
+                if (readyQueue[0].remainingBurst < currentProcess.remainingBurst) {
+                    output += `&nbsp;&nbsp;⚡ EXPROPIACIÓN: ${readyQueue[0].pid}(${readyQueue[0].remainingBurst}) < ${currentProcess.pid}(${currentProcess.remainingBurst})<br>`;
+                    readyQueue.push(currentProcess);
+                    currentProcess = null;
+                }
+            }
+            
+            // 4. Seleccionar proceso
+            if (!currentProcess && readyQueue.length > 0) {
+                readyQueue.sort((a, b) => {
+                    if (a.remainingBurst !== b.remainingBurst) return a.remainingBurst - b.remainingBurst;
+                    return a.arrival - b.arrival;
+                });
+                currentProcess = readyQueue.shift();
+                output += `&nbsp;&nbsp;▶️ Ejecuta: ${currentProcess.pid} (remaining=${currentProcess.remainingBurst})<br>`;
+            }
+            
+            // 5. Ejecutar
+            if (currentProcess) {
+                schedule.push({ pid: currentProcess.pid, time: time });
+                currentProcess.executedTime++;
+                currentProcess.remainingBurst--;
+                
+                // Verificar bloqueo
+                const pendingBlock = currentProcess.blocks.find(b => 
+                    !currentProcess.hasBlocked && currentProcess.executedTime === b.start
+                );
+                
+                if (pendingBlock) {
+                    currentProcess.isBlocked = true;
+                    currentProcess.hasBlocked = true;
+                    currentProcess.blockEndTime = time + 1 + pendingBlock.duration;
+                    blockedQueue.push(currentProcess);
+                    output += `&nbsp;&nbsp;🔒 ${currentProcess.pid} se bloquea hasta t=${currentProcess.blockEndTime}<br>`;
+                    currentProcess = null;
+                } else if (currentProcess.remainingBurst === 0) {
+                    output += `&nbsp;&nbsp;✅ ${currentProcess.pid} completa<br>`;
+                    currentProcess.completed = true;
+                    currentProcess = null;
+                }
+                
+                output += `&nbsp;&nbsp;Cola listos: [${readyQueue.map(p => `${p.pid}(${p.remainingBurst})`).join(', ')}]<br>`;
+            } else {
+                output += `&nbsp;&nbsp;💤 CPU IDLE<br>`;
+            }
+            
+            output += '</div>';
+            time++;
+        }
+        
+        // Mostrar diagrama
+        output += '<h2>Diagrama de Gantt resultante:</h2>';
+        output += '<div style="font-family: monospace; white-space: pre;">';
+        
+        const gantt = {};
+        schedule.forEach(s => {
+            if (!gantt[s.pid]) gantt[s.pid] = [];
+            gantt[s.pid].push(s.time);
+        });
+        
+        Object.keys(gantt).sort().reverse().forEach(pid => {
+            const times = gantt[pid];
+            output += `${pid}: ${times.join(', ')}\n`;
+        });
+        
+        output += '</div>';
+        
+        document.getElementById('output').innerHTML = output;
+    </script>
+</body>
+</html>
