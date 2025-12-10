@@ -6,6 +6,9 @@ const addProcessBtn = document.getElementById('addProcessBtn');
 const simulateBtn = document.getElementById('simulateBtn');
 const processTableBody = document.getElementById('processTableBody');
 
+// Contador global inicializado con los procesos existentes
+let processCounter = processTableBody.querySelectorAll('tr').length;
+
 // Event listeners
 addProcessBtn.addEventListener('click', () => {
     addProcess();
@@ -18,14 +21,14 @@ simulateBtn.addEventListener('click', () => {
 // Funciones de gestión de procesos
 function addProcess() {
     const processNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
-    const currentProcesses = processTableBody.querySelectorAll('tr').length;
     
-    if (currentProcesses >= processNames.length) {
+    if (processCounter >= processNames.length) {
         alert('Número máximo de procesos alcanzado');
         return;
     }
     
-    const processName = processNames[currentProcesses];
+    const processName = processNames[processCounter];
+    processCounter++;
     const row = document.createElement('tr');
     row.dataset.process = processName;
     row.innerHTML = `
