@@ -13,6 +13,20 @@
             <h1>FCFS - First Come, First Served</h1>
         </div>
 
+        <!-- Información del algoritmo -->
+        <div class="info-panel">
+            <h3>📋 Características del Algoritmo FCFS</h3>
+            <ul>
+                <li><strong>Criterio de Selección:</strong> Los procesos se ejecutan en el <strong>orden de llegada</strong> (First Come, First Served). El primer proceso que llega es el primero en ser atendido.</li>
+                <li><strong>No Expulsivo:</strong> Una vez que un proceso comienza su ejecución, continúa hasta completarse o hasta bloquearse por E/S. No puede ser interrumpido por otros procesos.</li>
+                <li><strong>Simple y Justo:</strong> Es el algoritmo más simple de implementar. Todos los procesos son tratados en orden de llegada sin prioridades.</li>
+                <li><strong>También conocido como:</strong> FIFO (First In, First Out), similar a una cola de atención.</li>
+                <li><strong>Ventaja:</strong> Fácil de entender e implementar. No hay inanición - todos los procesos eventualmente se ejecutan.</li>
+                <li><strong>Desventaja:</strong> Puede sufrir del <strong>efecto convoy</strong> - si un proceso largo llega primero, todos los demás deben esperar, aumentando el tiempo de espera promedio.</li>
+                <li><strong>Uso ideal:</strong> Sistemas batch (por lotes) donde los trabajos se procesan secuencialmente sin necesidad de interactividad.</li>
+            </ul>
+        </div>
+
         <!-- Panel de entrada de procesos -->
         <div class="input-panel">
             <h2>Configuración de Procesos</h2>
