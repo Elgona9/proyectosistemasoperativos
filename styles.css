@@ -373,9 +373,21 @@ h1 {
 .process-a { background: #ff6b35; }
 .process-b { background: #ff8c42; }
 .process-c { background: #ffa64d; }
-.process-d { background: #ffb866; }
-.process-e { background: #ffc97f; }
-.process-f { background: #ffd699; }
+.process-d { background: #df841c; }
+.process-e { background: #aa6c14; }
+.process-f { background: #ff9900; }
+.process-g { background: #ff6b35; }
+.process-h { background: #ff8c42; }
+.process-i { background: #ffa64d; }
+.process-j { background: #df841c; }
+.process-k { background: #aa6c14; }
+.process-l { background: #ff9900; }
+.process-m { background: #ff6b35; }
+.process-n { background: #ff8c42; }
+.process-o { background: #ffa64d; }
+.process-p { background: #df841c; }
+.process-q { background: #aa6c14; }
+.process-r { background: #ff9900; }
 
 /* Estilos para estados de procesos */
 .gantt-blocked {
